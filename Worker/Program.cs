@@ -31,6 +31,20 @@ namespace Worker
 
             // Let's generate our email job detail now
             CreateJob();
+
+            // And finally, schedule the job
+            ScheduleJob();
+        }
+
+        private static void ScheduleJob()
+        {
+            // Let's create a trigger that fires immediately
+            ITrigger trigger = TriggerBuilder.Create()
+                .StartNow()     // Starts the trigger immediately when scheduled
+                .Build();       // Builds a trigger to assign to a job
+
+            // Ask the scheduler to schedule our EmailJob
+            Scheduler.ScheduleJob(_emailJobDetail, trigger);
         }
 
         private static void CreateJob()
@@ -53,8 +67,8 @@ namespace Worker
     {
         public void Execute(IJobExecutionContext context)
         {
-            // TODO: Implement this
-            throw new System.NotImplementedException();
+            // Let's start simple, write to the console
+            Console.WriteLine("Hello World!");
         }
     }
 }
