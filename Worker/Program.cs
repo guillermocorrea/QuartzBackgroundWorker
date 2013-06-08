@@ -10,6 +10,7 @@ namespace Worker
     {
         static void Main(string[] args)
         {
+            // New stuff here
         }
     }
 }
