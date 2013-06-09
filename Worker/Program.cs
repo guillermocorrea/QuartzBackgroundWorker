@@ -119,7 +119,9 @@ namespace Worker
             _emailJobDetail = JobBuilder.Create<EmailJob>()
                 .WithIdentity("SendToMyself")   // Here we can assign a friendly name to our job        
                 .Build();                       // And now we build the job detail
-
+            
+            // Put options into data map
+            _emailJobDetail.JobDataMap.Put("Email", _options.Email);
         }
     }
 
@@ -130,8 +132,10 @@ namespace Worker
     {
         public void Execute(IJobExecutionContext context)
         {
-            // Let's start simple, write to the console
-            Console.WriteLine("Hello World! " + DateTime.Now.ToString("h:mm:ss tt"));
+            // Read the value of email from our merged (final) data map
+            var email = context.MergedJobDataMap["Email"] as string;
+
+            // TODO: Implement
         }
     }
 }
