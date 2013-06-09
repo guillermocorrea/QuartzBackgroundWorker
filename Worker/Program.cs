@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Quartz;
 using Quartz.Impl;
+using System.Configuration;
 
 namespace Worker
 {
@@ -13,6 +14,7 @@ namespace Worker
         private static readonly ISchedulerFactory SchedulerFactory;
         private static readonly IScheduler Scheduler;
         private static IJobDetail _emailJobDetail;
+        private static WorkerOptions _options;
 
         static Program()
         {
@@ -23,6 +25,10 @@ namespace Worker
 
         static void Main(string[] args)
         {
+            // Read our options from config (provided locally 
+            // or via cloud host)
+            ReadOptionsFromConfig();  
+
             // Now let's start our scheduler; you could perform
             // any processing or bootstrapping code here before
             // you start it but it must be started to schedule
@@ -34,25 +40,72 @@ namespace Worker
 
             // And finally, schedule the job
             ScheduleJob();
+
+            // Run immediately?
+            if (_options.RunImmediately)
+            {
+                Scheduler.TriggerJob(new JobKey("SendToMyself"));
+            }
         }
+
+        private static void ReadOptionsFromConfig()
+        {
+
+            // Make sure we have options to change
+            if (_options == null)
+                _options = new WorkerOptions();
+
+            // Try to read the RunImmediately value from app.config
+            string configRunImmediately = ConfigurationManager.AppSettings["RunImmediately"];
+            bool runImmediately;
+
+            if (Boolean.TryParse(configRunImmediately, out runImmediately))
+            {
+                _options.RunImmediately = runImmediately;
+            }
+
+            // Try to read the Email value from app.config
+            string configEmail = ConfigurationManager.AppSettings["Email"];
+
+            if (!String.IsNullOrEmpty(configEmail))
+            {
+                _options.Email = configEmail;
+            }
+        }  
 
         private static void ScheduleJob()
         {
             // Let's create a trigger that fires immediately
             ITrigger trigger = TriggerBuilder.Create()
+
                 // A description helps other people understand what you want
-                .WithDescription("Every 10 seconds")
-                // A simple schedule is the easiest to build
-                // It takes an Action<SimpleScheduleBuilder>
-                // that creates a schedule according to your
-                // specifications
-                .WithSimpleSchedule(x => x
+                .WithDescription("Every day at 3AM CST")
+
+                // A daily time schedule gives you a
+                // DailyTimeIntervalScheduleBuilder which provides
+                // a fluent interface to build a schedule
+                .WithDailyTimeIntervalSchedule(x => x
+
                     // Here we specify the interval
-                    .WithIntervalInSeconds(10)
+                    .WithIntervalInHours(24)
+
                     // And how often to repeat it
-                    .RepeatForever())
+                    .OnEveryDay()
+
+                    // Specify the time of day the trigger fires, in UTC (9am),
+                    // since CST is UTC-0600
+                    .StartingDailyAt(TimeOfDay.HourAndMinuteOfDay(9, 0))
+
+                    // Specify the timezone
+                    //
+                    // I like to use UTC dates in my applications to make sure
+                    // I stay consistent, especially when you never know what
+                    // server you're on!
+                    .InTimeZone(TimeZoneInfo.Utc))
+
                 // Finally, we take the schedule and build a trigger
                 .Build();
+
             // Ask the scheduler to schedule our EmailJob
             Scheduler.ScheduleJob(_emailJobDetail, trigger);
         }
